@@ -7,7 +7,7 @@ import time
 from pyfirmata import Arduino, util, SERVO, STRING_DATA
 import os
 
-# Função de pausa bruta
+# Função de pausa bruta utilizando um prompt de INPUT
 def pause():
     input("\nPressione qualquer tecla para continuar...")
 
@@ -19,11 +19,11 @@ def clearConsole():
 port = "COM7"
 board = Arduino(port)
 
-# Determina os parâmetros iniciais para o scraper
+# Determina os parâmetros iniciais para o pesquisador de Internet
 s = HTMLSession()
 query = input("Localização: ")
 
-# Transforma o site em HTML e pega as informações necessárias
+# Transforma o site no formato HTML e pega as informações necessárias
 url = f'https://www.google.com/search?q=weather+{query}'
 r = s.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'})
 title = r.html.find('span.BBwThe', first=True).text
@@ -31,23 +31,31 @@ title = r.html.find('span.BBwThe', first=True).text
 # No site falava que era bom começar um Iterator pois de acordo com a documentação do Pyfirmata,
 # "Para usar portas analógicas, provavelmente é útil iniciar um thread do iterador. 
 # Caso contrário a placa continuará enviando dados para sua serial, até que ela transborde"
+# Ou seja, esses parâmetros servem como limite para não sobrecarregar a placa ARDUINO de informações
 it = util.Iterator(board)
 it.start()
 time.sleep(0.05)
-board.analog[0].enable_reporting()
 
+# Define o estado do pino analógico 0 para enviar informações.
+board.analog[0].enable_reporting()
 servPin = 8
+# Define o estado do pino 9 (relé) com valor 1, ou seja, ligado.
 board.digital[9].write(1)
+# Caracteriza o pino servPin (variável anteriormente o define como 8) como um servo.
 board.digital[servPin].mode = SERVO
 
 # Equivalente ao void loop();
 while True:
     # Pega as informações de temperatura, e precipitação. Está dentro do loop para ser atualizado constantemente.
+    # As informações são encontradas através da pesquisa de class's e span's, pois pode haver mais de um de cada.
+    # A função .text retira apenas o texto daquela função, e o .rstrip retira a porcentagem do valor de precipitação
+    # a fim de ser mudada para um valor float.
     temp = r.html.find('span#wob_tm', first=True).text
     prec = r.html.find('div.wtsRwe', first=True).find('span#wob_pp', first=True).text.rstrip("%")
     prec = int(prec)
 
     # É estúpido mas é necessário. A primeira vez que o sensor é lido, por algum motivo, retorna "None".
+    # Por isso, é necessário executar esse loop try para pular essa condição.
     try:
         analog_value = board.analog[0].read()
         time.sleep(0.05)
@@ -55,7 +63,7 @@ while True:
         break
 
     # Lê o sensor e executa os cáculos. O sensor retorna resultados em valor de resistência. Esses
-    # cálculos transformam essas informações em porcentagens em consideração da comparação 
+    # cálculos transformam essas informações em porcentagens em consideração da comparação.
     analog_value = board.analog[0].read()
     moistData = analog_value * 1000
     moistCalc = int(100 - ((moistData/1023)*100))
@@ -80,18 +88,18 @@ while True:
     data3 = "Hum. Sensor: " + str(moistCalc) + "%"
     data4 = msg
 
-    # Mostra no console
+    # Mostra na janela Python
     print(title)
     print(prec,"%"," de precipitação")
     print(moistCalc, "%", " humidade no sensor")
     print("Status torneira: ", msg)
     print("\nCTRL+C to terminate program.")
-    # LCD
+    # Imprimem os valores DATA definidos anteriormente no LCD do Arduíno.
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data1))
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data2))
     time.sleep(5)
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data3))
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data4))
-    # Limpa o console
+    # Limpa a janela Pyhton
     time.sleep(5)
     clearConsole()
