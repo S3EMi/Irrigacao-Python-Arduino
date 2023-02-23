@@ -101,6 +101,23 @@ while True:
     time.sleep(5)
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data3))
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data4))
-    # Limpa a janela Pyhton
+    
+    # Pegar as informações e colocar no arquivo txt
+    with open("Umidade.txt") as arquivo:
+        arquivo.write("\n", moistCalc)
+
+    with open("Temperatura") as arquivot:
+        arquivot.write("n", temp)
+
+    with open("Parametro.txt") as arquivop:
+        arquivop.write("\n", msg)
+
+    with open("Desempenho.txt") as arquivope:
+        arquivope.write("\n", moistCalc + temp + prec / 3)
+
+    with open("Data.txt") as arq:
+        arq.write("\n", hoje)
+    
+    # Limpa o console Pyhton
     time.sleep(5)
     clearConsole()
