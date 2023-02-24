@@ -2,30 +2,41 @@
 # É utilizado a ferramenta HTML Requests para analisar o site de clima do Google.
 # Código original em: https://github.com/S3EMi/Irrigacao-Python-Arduino
 
+import datetime
 from requests_html import HTMLSession
 import time
 from pyfirmata import Arduino, util, SERVO, STRING_DATA
 import os
 
+
+# Nós iremos pegar a variavel servPin e colocar no html
+# Podemos obserrvar que podemos usar isso para indentificar se o protótipo está ligada ou não
 # Função para limpar a janela
+
+hoje = datetime.date.today()
+
+
 def clearConsole():
     os.system('cls')
 
+
 # Estabelecer o port do Arduino para comunicação e controle.
-port = "COM7"
+port = "COM4"
 board = Arduino(port)
 
 # Determina os parâmetros iniciais para o pesquisador de Internet
 s = HTMLSession()
 query = input("Localização: ")
+thresh = input("Threshold para comparação do sensor: ")
 
 # Transforma o site no formato HTML e pega as informações necessárias
 url = f'https://www.google.com/search?q=weather+{query}'
-r = s.get(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'})
+r = s.get(url, headers={
+          'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36'})
 title = r.html.find('span.BBwThe', first=True).text
 
 # No site falava que era bom começar um Iterator pois de acordo com a documentação do Pyfirmata,
-# "Para usar portas analógicas, provavelmente é útil iniciar um thread do iterador. 
+# "Para usar portas analógicas, provavelmente é útil iniciar um thread do iterador.
 # Caso contrário a placa continuará enviando dados para sua serial, até que ela transborde"
 # Ou seja, esses parâmetros servem como limite para não sobrecarregar a placa ARDUINO de informações.
 it = util.Iterator(board)
@@ -47,7 +58,8 @@ while True:
     # A função .text retira apenas o texto daquela função, e o .rstrip retira a porcentagem do valor de precipitação
     # a fim de ser mudada para um valor float.
     temp = r.html.find('span#wob_tm', first=True).text
-    prec = r.html.find('div.wtsRwe', first=True).find('span#wob_pp', first=True).text.rstrip("%")
+    prec = r.html.find('div.wtsRwe', first=True).find(
+        'span#wob_pp', first=True).text.rstrip("%")
     prec = int(prec)
 
     # É estúpido mas é necessário. A primeira vez que o sensor é lido, por algum motivo, retorna "None".
@@ -68,15 +80,15 @@ while True:
     moistCalc = int(100 - ((moistData/1023)*100))
 
     # Simples declarações de "Se" para executar as comparações
-    if moistCalc <= 45 and prec <= 70:
+    if moistCalc <= int(thresh) and prec <= 70:
         # Gira o Servo para ligar a torneira
-        board.digital[servPin].write(180) # Torneira ON
+        board.digital[servPin].write(180)  # Torneira ON
         # Liga o Relé no pino 9
         board.digital[9].write(0)
         msg = "Torneira LIG."
-    else: 
+    else:
         # Gira o Servo para desligar a torneira
-        board.digital[servPin].write(0) # Torneira OFF
+        board.digital[servPin].write(0)  # Torneira OFF
         # Desliga o relé no pino 9
         board.digital[9].write(1)
         msg = "Torneira DES."
@@ -91,7 +103,7 @@ while True:
 
     # Mostra na janela Python
     print(title)
-    print(prec,"%"," de precipitação")
+    print(prec, "%", " de precipitação")
     print(moistCalc, "%", " humidade no sensor")
     print("Status torneira: ", msg)
     print("\nCTRL+C to terminate program.")
@@ -103,21 +115,23 @@ while True:
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data4))
     
     # Pegar as informações e colocar no arquivo txt
-    with open("Umidade.txt") as arquivo:
-        arquivo.write("\n", moistCalc)
+    with open("Umidade.txt", "a") as arquivo:
+        arquivo.write("\n" + str(moistCalc))
 
-    with open("Temperatura") as arquivot:
-        arquivot.write("n", temp)
+    with open("Temperatura", "a") as arquivot:
+        arquivot.write("\n" + str(temp))
 
-    with open("Parametro.txt") as arquivop:
-        arquivop.write("\n", msg)
+    with open("Parametro.txt", "a") as arquivop:
+        arquivop.write("\n" + str(msg))
 
-    with open("Desempenho.txt") as arquivope:
-        arquivope.write("\n", moistCalc + temp + prec / 3)
+    calc1 = int(moistCalc) + int(temp) + int(prec) / 3
 
-    with open("Data.txt") as arq:
-        arq.write("\n", hoje)
-    
-    # Limpa o console Pyhton
+    with open("Desempenho.txt", "a") as arquivope:
+        arquivope.write("\n" + str(calc1))
+
+    with open("Data.txt", "a") as arq:
+        arq.write("\n" + str(hoje))
+
+    # Limpa a janela Pyhton
     time.sleep(5)
     clearConsole()
