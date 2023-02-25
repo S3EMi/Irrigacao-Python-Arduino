@@ -9,13 +9,10 @@ from pyfirmata import Arduino, util, SERVO, STRING_DATA
 import os
 
 
-# Nós iremos pegar a variavel servPin e colocar no html
-# Podemos obserrvar que podemos usar isso para indentificar se o protótipo está ligada ou não
-# Função para limpar a janela
-
+# Pega a data de hoje
 hoje = datetime.date.today()
 
-
+# Limpa o terminal
 def clearConsole():
     os.system('cls')
 
@@ -114,7 +111,7 @@ while True:
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data3))
     board.send_sysex(STRING_DATA, util.str_to_two_byte_iter(data4))
     
-    # Pegar as informações e colocar no arquivo txt
+    # Pega as variáveis e salva em arquivos .txt para serem acessados pelo código HTML
     with open("Umidade.txt", "a") as arquivo:
         arquivo.write("\n" + str(moistCalc))
 
@@ -132,6 +129,6 @@ while True:
     with open("Data.txt", "a") as arq:
         arq.write("\n" + str(hoje))
 
-    # Limpa a janela Pyhton
+    # Limpa a janela Python
     time.sleep(5)
     clearConsole()
